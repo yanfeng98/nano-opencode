@@ -17,10 +17,7 @@ export namespace Log {
   }
 
   let level: Level = "INFO"
-
-  function shouldLog(input: Level): boolean {
-    return levelPriority[input] >= levelPriority[level]
-  }
+  let last = Date.now()
 
   export type Logger = {
     debug(message?: any, extra?: Record<string, any>): void
@@ -42,61 +39,6 @@ export namespace Log {
 
   export const Default = create({ service: "default" })
 
-  export interface Options {
-    print: boolean
-    dev?: boolean
-    level?: Level
-  }
-
-  let logpath = ""
-  export function file() {
-    return logpath
-  }
-  let write = (msg: any) => {
-    process.stderr.write(msg)
-    return msg.length
-  }
-
-  export async function init(options: Options) {
-    if (options.level) level = options.level
-    cleanup(Global.Path.log)
-    if (options.print) return
-    logpath = path.join(
-      Global.Path.log,
-      options.dev ? "dev.log" : new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
-    )
-    await fs.truncate(logpath).catch(() => {})
-    const stream = createWriteStream(logpath, { flags: "a" })
-    write = async (msg: any) => {
-      return new Promise((resolve, reject) => {
-        stream.write(msg, (err) => {
-          if (err) reject(err)
-          else resolve(msg.length)
-        })
-      })
-    }
-  }
-
-  async function cleanup(dir: string) {
-    const files = await Glob.scan("????-??-??T??????.log", {
-      cwd: dir,
-      absolute: true,
-      include: "file",
-    })
-    if (files.length <= 5) return
-
-    const filesToDelete = files.slice(0, -10)
-    await Promise.all(filesToDelete.map((file) => fs.unlink(file).catch(() => {})))
-  }
-
-  function formatError(error: Error, depth = 0): string {
-    const result = error.message
-    return error.cause instanceof Error && depth < 10
-      ? result + " Caused by: " + formatError(error.cause, depth + 1)
-      : result
-  }
-
-  let last = Date.now()
   export function create(tags?: Record<string, any>) {
     tags = tags || {}
 
@@ -178,5 +120,64 @@ export namespace Log {
     }
 
     return result
+  }
+
+  function shouldLog(input: Level): boolean {
+    return levelPriority[input] >= levelPriority[level]
+  }
+
+  function formatError(error: Error, depth = 0): string {
+    const result = error.message
+    return error.cause instanceof Error && depth < 10
+      ? result + " Caused by: " + formatError(error.cause, depth + 1)
+      : result
+  }
+
+  let write = (msg: any) => {
+    process.stderr.write(msg)
+    return msg.length
+  }
+
+  export interface Options {
+    print: boolean
+    dev?: boolean
+    level?: Level
+  }
+
+  let logpath = ""
+  export function file() {
+    return logpath
+  }
+
+  export async function init(options: Options) {
+    if (options.level) level = options.level
+    cleanup(Global.Path.log)
+    if (options.print) return
+    logpath = path.join(
+      Global.Path.log,
+      options.dev ? "dev.log" : new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
+    )
+    await fs.truncate(logpath).catch(() => {})
+    const stream = createWriteStream(logpath, { flags: "a" })
+    write = async (msg: any) => {
+      return new Promise((resolve, reject) => {
+        stream.write(msg, (err) => {
+          if (err) reject(err)
+          else resolve(msg.length)
+        })
+      })
+    }
+  }
+
+  async function cleanup(dir: string) {
+    const files = await Glob.scan("????-??-??T??????.log", {
+      cwd: dir,
+      absolute: true,
+      include: "file",
+    })
+    if (files.length <= 5) return
+
+    const filesToDelete = files.slice(0, -10)
+    await Promise.all(filesToDelete.map((file) => fs.unlink(file).catch(() => {})))
   }
 }
