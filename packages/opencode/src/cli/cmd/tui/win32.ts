@@ -54,17 +54,6 @@ export function win32FlushInputBuffer() {
 
 let unhook: (() => void) | undefined
 
-/**
- * Keep ENABLE_PROCESSED_INPUT disabled.
- *
- * On Windows, Ctrl+C becomes a CTRL_C_EVENT (instead of stdin input) when
- * ENABLE_PROCESSED_INPUT is set. Various runtimes can re-apply console modes
- * (sometimes on a later tick), and the flag is console-global, not per-process.
- *
- * We combine:
- * - A `setRawMode(...)` hook to re-clear after known raw-mode toggles.
- * - A low-frequency poll as a backstop for native/external mode changes.
- */
 export function win32InstallCtrlCGuard() {
   if (process.platform !== "win32") return
   if (!process.stdin.isTTY) return
@@ -87,7 +76,6 @@ export function win32InstallCtrlCGuard() {
     k32!.symbols.SetConsoleMode(handle, mode & ~ENABLE_PROCESSED_INPUT)
   }
 
-  // Some runtimes can re-apply console modes on the next tick; enforce twice.
   const later = () => {
     enforce()
     setImmediate(enforce)

@@ -45,13 +45,6 @@ function createEventSource(client: RpcClient): EventSource {
   }
 }
 
-async function target() {
-  if (typeof OPENCODE_WORKER_PATH !== "undefined") return OPENCODE_WORKER_PATH
-  const dist = new URL("./cli/cmd/tui/worker.js", import.meta.url)
-  if (await Filesystem.exists(fileURLToPath(dist))) return dist
-  return new URL("./worker.ts", import.meta.url)
-}
-
 async function input(value?: string) {
   const piped = process.stdin.isTTY ? undefined : await Bun.stdin.text()
   if (!value) return piped
@@ -96,12 +89,8 @@ export const TuiThreadCommand = cmd({
         describe: "agent to use",
       }),
   handler: async (args) => {
-    // Keep ENABLE_PROCESSED_INPUT cleared even if other code flips it.
-    // (Important when running under `bun run` wrappers on Windows.)
     const unguard = win32InstallCtrlCGuard()
     try {
-      // Must be the very first thing — disables CTRL_C_EVENT before any Worker
-      // spawn or async work so the OS cannot kill the process group.
       win32DisableProcessedInput()
 
       if (args.fork && !args.continue && !args.session) {
@@ -110,7 +99,6 @@ export const TuiThreadCommand = cmd({
         return
       }
 
-      // Resolve relative paths against PWD to preserve behavior when using --cwd flag
       const root = Filesystem.resolve(process.env.PWD ?? process.cwd())
       const cwd = args.project
         ? Filesystem.resolve(path.isAbsolute(args.project) ? args.project : path.join(root, args.project))
@@ -219,3 +207,10 @@ export const TuiThreadCommand = cmd({
     process.exit(0)
   },
 })
+
+async function target() {
+  if (typeof OPENCODE_WORKER_PATH !== "undefined") return OPENCODE_WORKER_PATH
+  const dist = new URL("./cli/cmd/tui/worker.js", import.meta.url)
+  if (await Filesystem.exists(fileURLToPath(dist))) return dist
+  return new URL("./worker.ts", import.meta.url)
+}
