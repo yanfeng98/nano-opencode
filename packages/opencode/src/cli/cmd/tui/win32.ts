@@ -23,9 +23,6 @@ function load() {
   }
 }
 
-/**
- * Clear ENABLE_PROCESSED_INPUT on the console stdin handle.
- */
 export function win32DisableProcessedInput() {
   if (process.platform !== "win32") return
   if (!process.stdin.isTTY) return
@@ -93,7 +90,6 @@ export function win32InstallCtrlCGuard() {
     stdin.setRawMode = wrapped
   }
 
-  // Ensure it's cleared immediately too (covers any earlier mode changes).
   later()
 
   const interval = setInterval(enforce, 100)
