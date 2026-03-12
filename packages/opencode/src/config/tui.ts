@@ -14,7 +14,6 @@ export namespace TuiConfig {
   const log = Log.create({ service: "tui.config" })
 
   export const Info = TuiInfo
-
   export type Info = z.output<typeof Info>
 
   function mergeInfo(target: Info, source: Info): Info {
